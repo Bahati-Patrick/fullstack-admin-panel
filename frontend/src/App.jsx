@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import protobufService from './utils/protobuf.js';
 
 function App() {
-  // State management - data that can change
+  // State management
   const [users, setUsers] = useState([]);
+  const [protobufUsers, setProtobufUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [protobufLoading, setProtobufLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [activeTab, setActiveTab] = useState('json'); // 'json' or 'protobuf'
   
   // Form state for creating/editing users
   const [formData, setFormData] = useState({
@@ -32,6 +36,31 @@ function App() {
       }, 5000);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch users from backend (Protocol Buffers)
+  const fetchUsersAsProtobuf = async () => {
+    try {
+      setProtobufLoading(true);
+      const users = await protobufService.fetchUsersAsProtobuf();
+      setProtobufUsers(users);
+      setError(null);
+      setSuccess('✅ Protobuf data loaded successfully!');
+      
+      // Auto-dismiss success message after 3 seconds
+      setTimeout(() => {
+        setSuccess(null);
+      }, 3000);
+    } catch (err) {
+      setError('Failed to fetch protobuf data: ' + err.message);
+      
+      // Auto-dismiss error message after 5 seconds
+      setTimeout(() => {
+        setError(null);
+      }, 5000);
+    } finally {
+      setProtobufLoading(false);
     }
   };
 
@@ -125,7 +154,26 @@ function App() {
     <div className="container">
       <div className="header">
         <h1>Admin Panel</h1>
-        <p>Users Management</p>
+        <p>Users Management with Protocol Buffers Support</p>
+        
+        {/* Data Source Tabs */}
+        <div className="tabs">
+          <button 
+            className={`tab ${activeTab === 'json' ? 'active' : ''}`}
+            onClick={() => setActiveTab('json')}
+          >
+            JSON API
+          </button>
+          <button 
+            className={`tab ${activeTab === 'protobuf' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab('protobuf');
+              fetchUsersAsProtobuf();
+            }}
+          >
+            Protocol Buffers
+          </button>
+        </div>
       </div>
 
       {/* Error/Success Messages */}
@@ -189,59 +237,108 @@ function App() {
 
       {/* Users Table */}
       <div className="card">
-        <h2>Users List</h2>
-        {loading ? (
-          <div className="loading">Loading users...</div>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Created At</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map(user => (
-                <tr key={user.id}>
-                  <td>{user.id}</td>
-                  <td>{user.email}</td>
-                  <td>
-                    <span className={`role-${user.role}`}>
-                      {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`status-${user.status}`}>
-                      {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
-                    </span>
-                  </td>
-                  <td>{new Date(user.createdAt).toLocaleDateString()}</td>
-                  <td>
-                    <button 
-                      className="btn" 
-                      onClick={() => handleEdit(user)}
-                    >
-                      Edit
-                    </button>
-                    <button 
-                      className="btn btn-danger" 
-                      onClick={() => handleDelete(user.id)}
-                    >
-                      Delete
-                    </button>
-                  </td>
+        <h2>Users List ({activeTab === 'json' ? 'JSON API' : 'Protocol Buffers'})</h2>
+        {activeTab === 'json' ? (
+          loading ? (
+            <div className="loading">Loading users...</div>
+          ) : (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>No.</th>
+                  <th>ID</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Created At</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {users.map((user, index) => (
+                  <tr key={user.id}>
+                    <td>{index + 1}</td>
+                    <td>{user.id}</td>
+                    <td>{user.email}</td>
+                    <td>
+                      <span className={`role-${user.role}`}>
+                        {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`status-${user.status}`}>
+                        {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
+                      </span>
+                    </td>
+                    <td>{new Date(user.createdAt).toLocaleDateString()}</td>
+                    <td>
+                      <button 
+                        className="btn" 
+                        onClick={() => handleEdit(user)}
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        className="btn btn-danger" 
+                        onClick={() => handleDelete(user.id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )
+        ) : (
+          protobufLoading ? (
+            <div className="loading">Loading protobuf data...</div>
+          ) : (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>No.</th>
+                  <th>ID</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Created At</th>
+                  <th>Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {protobufUsers.map((user, index) => (
+                  <tr key={user.id}>
+                    <td>{index + 1}</td>
+                    <td>{user.id}</td>
+                    <td>{user.email}</td>
+                    <td>
+                      <span className={`role-${user.role}`}>
+                        {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`status-${user.status}`}>
+                        {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
+                      </span>
+                    </td>
+                    <td>{new Date(user.createdAt).toLocaleDateString()}</td>
+                    <td>
+                      <span className="protobuf-badge">Protocol Buffers</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )
         )}
         
-        {!loading && users.length === 0 && (
+        {activeTab === 'json' && !loading && users.length === 0 && (
           <div className="loading">No users found. Create your first user above!</div>
+        )}
+        
+        {activeTab === 'protobuf' && !protobufLoading && protobufUsers.length === 0 && (
+          <div className="loading">No protobuf data loaded. Click "Protocol Buffers" tab to load data.</div>
         )}
       </div>
     </div>

@@ -112,6 +112,45 @@ class UserController {
             });
         }
     }
+
+    // Export users as Protocol Buffers
+    static async exportUsers(req, res) {
+        try {
+            const users = User.getAll();
+
+            // Convert users to protobuf format
+            const protobuf = await import('protobufjs');
+            const root = await protobuf.default.load('./proto/User.proto');
+            const UserList = root.lookupType('UserList');
+
+            // Prepare data for protobuf
+            const usersData = users.map(user => ({
+                id: user.id,
+                email: user.email,
+                role: user.role,
+                status: user.status,
+                createdAt: new Date(user.createdAt).getTime() // Convert to timestamp
+            }));
+
+            // Create protobuf message
+            const message = UserList.create({
+                users: usersData
+            });
+            const buffer = UserList.encode(message).finish();
+
+            // Set proper headers for protobuf
+            res.setHeader('Content-Type', 'application/x-protobuf');
+            res.setHeader('Content-Length', buffer.length);
+            res.setHeader('X-Protobuf-Schema', 'User.proto');
+
+            res.send(buffer);
+        } catch (error) {
+            console.error('Protobuf export error:', error);
+            res.status(500).json({
+                error: 'Failed to export users as protobuf'
+            });
+        }
+    }
 }
 
 export default UserController;

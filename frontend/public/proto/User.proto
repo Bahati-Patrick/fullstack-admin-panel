@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+// User message definition
+message User {
+  int32 id = 1;
+  string email = 2;
+  string role = 3;
+  string status = 4;
+  int64 createdAt = 5;
+}
+
+// UserList message for exporting multiple users
+message UserList {
+  repeated User users = 1;
+}
