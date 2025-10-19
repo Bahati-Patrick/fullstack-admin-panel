@@ -7,7 +7,9 @@ const router = express.Router();
 router.get('/', UserController.getAllUsers); // GET /api/users
 router.get('/export', UserController.exportUsers); // GET /api/users/export (protobuf)
 router.get('/stats', UserController.getUserStats); // GET /api/users/stats
+router.get('/chart-data', UserController.getChartData); // GET /api/users/chart-data
 router.get('/public-key', UserController.getPublicKey); // GET /api/users/public-key
+router.get('/seed', UserController.seedTestData); // GET /api/users/seed (Added, placed before :id)
 router.get('/:id', UserController.getUserById); // GET /api/users/:id (MUST be last)
 router.post('/', UserController.createUser); // POST /api/users
 router.put('/:id', UserController.updateUser); // PUT /api/users/:id

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import protobufService from './utils/protobuf.js';
 import cryptoService from './utils/crypto.js';
+import ChartDashboard from './components/ChartDashboard.jsx';
 
 function App() {
   // State management
@@ -11,7 +12,17 @@ function App() {
   const [protobufLoading, setProtobufLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [activeTab, setActiveTab] = useState('json'); // 'json' or 'protobuf'
+  const [activeTab, setActiveTab] = useState('json'); // 'json', 'protobuf', or 'charts'
+  
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalUsers: 0,
+    hasNextPage: false,
+    hasPrevPage: false
+  });
+  const [loadingMore, setLoadingMore] = useState(false);
   
   // Form state for creating/editing users
   const [formData, setFormData] = useState({
@@ -22,15 +33,20 @@ function App() {
   const [editingUser, setEditingUser] = useState(null);
 
   // Fetch users from backend with signature verification
-  const fetchUsers = async () => {
+  const fetchUsers = async (page = 1, append = false) => {
     try {
-      setLoading(true);
-      const response = await axios.get('/api/users');
-      const usersData = response.data;
-      
+      if (page === 1) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+
+      const response = await axios.get(`/api/users?page=${page}&limit=25`);
+      const responseData = response.data;
+
       // Verify signatures for each user
       const verifiedUsers = await Promise.all(
-        usersData.map(async (user) => {
+        responseData.users.map(async (user) => {
           try {
             if (user.emailHash && user.signature) {
               const isValid = await cryptoService.verifySignature(user.email, user.signature);
@@ -43,18 +59,27 @@ function App() {
           }
         })
       );
-      
-      setUsers(verifiedUsers);
+
+      // Update users list (append for load more, replace for initial load)
+      if (append) {
+        setUsers(prevUsers => [...prevUsers, ...verifiedUsers]);
+      } else {
+        setUsers(verifiedUsers);
+      }
+
+      // Update pagination state
+      setPagination(responseData.pagination);
       setError(null);
     } catch (err) {
       setError('Failed to fetch users: ' + (err.response?.data?.error || err.message));
-      
+
       // Auto-dismiss error message after 5 seconds
       setTimeout(() => {
         setError(null);
       }, 5000);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
@@ -84,6 +109,13 @@ function App() {
   };
 
   // Load users when component mounts
+  // Load more users
+  const loadMoreUsers = () => {
+    if (pagination.hasNextPage && !loadingMore) {
+      fetchUsers(pagination.currentPage + 1, true);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -192,6 +224,12 @@ function App() {
           >
             Protocol Buffers
           </button>
+          <button 
+            className={`tab ${activeTab === 'charts' ? 'active' : ''}`}
+            onClick={() => setActiveTab('charts')}
+          >
+            📊 Charts
+          </button>
         </div>
       </div>
 
@@ -199,8 +237,9 @@ function App() {
       {error && <div className="error">{error}</div>}
       {success && <div className="success">{success}</div>}
 
-      {/* User Form */}
-      <div className="card">
+      {/* User Form - Only show for JSON and Protobuf tabs */}
+      {(activeTab === 'json' || activeTab === 'protobuf') && (
+        <div className="card">
         <h2>{editingUser ? 'Edit User' : 'Add New User'}</h2>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -252,10 +291,12 @@ function App() {
             </button>
           )}
         </form>
-      </div>
+        </div>
+      )}
 
-      {/* Users Table */}
-      <div className="card">
+      {/* Users Table - Only show for JSON and Protobuf tabs */}
+      {(activeTab === 'json' || activeTab === 'protobuf') && (
+        <div className="card">
         <h2>Users List ({activeTab === 'json' ? 'JSON API' : 'Protocol Buffers'})</h2>
         {activeTab === 'json' ? (
           loading ? (
@@ -362,14 +403,36 @@ function App() {
           )
         )}
         
-        {activeTab === 'json' && !loading && users.length === 0 && (
-          <div className="loading">No users found. Create your first user above!</div>
-        )}
+                {activeTab === 'json' && !loading && users.length === 0 && (
+                  <div className="loading">No users found. Create your first user above!</div>
+                )}
+
+                {/* Load More Button */}
+                {activeTab === 'json' && !loading && pagination.hasNextPage && (
+                  <div className="load-more-container">
+                    <button 
+                      className="btn load-more-btn" 
+                      onClick={loadMoreUsers}
+                      disabled={loadingMore}
+                    >
+                      {loadingMore ? 'Loading...' : `Load More (${pagination.totalUsers - users.length} remaining)`}
+                    </button>
+                    <div className="pagination-info">
+                      Showing {users.length} of {pagination.totalUsers} users
+                    </div>
+                  </div>
+                )}
         
         {activeTab === 'protobuf' && !protobufLoading && protobufUsers.length === 0 && (
           <div className="loading">No protobuf data loaded. Click "Protocol Buffers" tab to load data.</div>
         )}
-      </div>
+        </div>
+      )}
+
+      {/* Charts Tab Content */}
+      {activeTab === 'charts' && (
+        <ChartDashboard />
+      )}
     </div>
   );
 }

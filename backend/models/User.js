@@ -11,6 +11,25 @@ class User {
         }
     }
 
+    // Get users with pagination
+    static getAllPaginated(limit, offset) {
+        try {
+            return db.prepare('SELECT * FROM users ORDER BY createdAt DESC LIMIT ? OFFSET ?').all(limit, offset);
+        } catch (error) {
+            throw new Error('Failed to fetch users: ' + error.message);
+        }
+    }
+
+    // Get total count of users
+    static getTotalCount() {
+        try {
+            const result = db.prepare('SELECT COUNT(*) as count FROM users').get();
+            return result.count;
+        } catch (error) {
+            throw new Error('Failed to count users: ' + error.message);
+        }
+    }
+
     // Get user by ID
     static getById(id) {
         try {
@@ -101,6 +120,48 @@ class User {
             }
 
             return this.getById(id);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // Create user with custom creation date (for seeding)
+    static createWithCustomDate(userData, daysAgo) {
+        try {
+            const {
+                email,
+                role = 'user',
+                status = 'active'
+            } = userData;
+
+            // Validate email
+            if (!email) {
+                throw new Error('Email is required');
+            }
+
+            // Check if email already exists
+            const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+            if (existingUser) {
+                throw new Error('Email already exists');
+            }
+
+            // Generate SHA-384 hash of email
+            const emailHash = cryptoService.hashEmail(email);
+
+            // Create digital signature
+            const signature = cryptoService.signHash(emailHash);
+
+            // Calculate custom creation date
+            const customDate = new Date();
+            customDate.setDate(customDate.getDate() - daysAgo);
+            const customDateString = customDate.toISOString();
+
+            // Insert new user with crypto data and custom date
+            const stmt = db.prepare('INSERT INTO users (email, role, status, emailHash, signature, createdAt) VALUES (?, ?, ?, ?, ?, ?)');
+            const result = stmt.run(email, role, status, emailHash, signature, customDateString);
+
+            // Return the created user
+            return this.getById(result.lastInsertRowid);
         } catch (error) {
             throw error;
         }
