@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import protobufService from './utils/protobuf.js';
+import cryptoService from './utils/crypto.js';
 
 function App() {
   // State management
@@ -20,12 +21,30 @@ function App() {
   });
   const [editingUser, setEditingUser] = useState(null);
 
-  // Fetch users from backend
+  // Fetch users from backend with signature verification
   const fetchUsers = async () => {
     try {
       setLoading(true);
       const response = await axios.get('/api/users');
-      setUsers(response.data);
+      const usersData = response.data;
+      
+      // Verify signatures for each user
+      const verifiedUsers = await Promise.all(
+        usersData.map(async (user) => {
+          try {
+            if (user.emailHash && user.signature) {
+              const isValid = await cryptoService.verifySignature(user.email, user.signature);
+              return { ...user, signatureValid: isValid };
+            }
+            return { ...user, signatureValid: false };
+          } catch (error) {
+            console.error(`Signature verification failed for user ${user.id}:`, error);
+            return { ...user, signatureValid: false };
+          }
+        })
+      );
+      
+      setUsers(verifiedUsers);
       setError(null);
     } catch (err) {
       setError('Failed to fetch users: ' + (err.response?.data?.error || err.message));
@@ -250,6 +269,7 @@ function App() {
                   <th>Email</th>
                   <th>Role</th>
                   <th>Status</th>
+                  <th>Signature</th>
                   <th>Created At</th>
                   <th>Actions</th>
                 </tr>
@@ -269,6 +289,15 @@ function App() {
                       <span className={`status-${user.status}`}>
                         {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
                       </span>
+                    </td>
+                    <td>
+                      {user.signatureValid !== undefined ? (
+                        <span className={`signature-${user.signatureValid ? 'valid' : 'invalid'}`}>
+                          {user.signatureValid ? '✅ Valid' : '❌ Invalid'}
+                        </span>
+                      ) : (
+                        <span className="signature-unknown">❓ Unknown</span>
+                      )}
                     </td>
                     <td>{new Date(user.createdAt).toLocaleDateString()}</td>
                     <td>

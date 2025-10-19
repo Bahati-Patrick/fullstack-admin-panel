@@ -16,6 +16,8 @@ const initializeDatabase = () => {
       email TEXT UNIQUE NOT NULL,
       role TEXT CHECK(role IN ('admin', 'user')) NOT NULL DEFAULT 'user',
       status TEXT CHECK(status IN ('active', 'inactive')) NOT NULL DEFAULT 'active',
+      emailHash TEXT,
+      signature TEXT,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `;

@@ -210,3 +210,22 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+
+/* Signature Verification */
+.signature-valid {
+  color: #28a745;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.signature-invalid {
+  color: #dc3545;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.signature-unknown {
+  color: #6c757d;
+  font-weight: 500;
+  font-size: 12px;
+}

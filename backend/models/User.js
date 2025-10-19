@@ -1,4 +1,5 @@
 import db from '../config/database.js';
+import cryptoService from '../services/cryptoService.js';
 
 class User {
     // Get all users
@@ -43,9 +44,15 @@ class User {
                 throw new Error('Email already exists');
             }
 
-            // Insert new user
-            const stmt = db.prepare('INSERT INTO users (email, role, status) VALUES (?, ?, ?)');
-            const result = stmt.run(email, role, status);
+            // Generate SHA-384 hash of email
+            const emailHash = cryptoService.hashEmail(email);
+
+            // Create digital signature
+            const signature = cryptoService.signHash(emailHash);
+
+            // Insert new user with crypto data
+            const stmt = db.prepare('INSERT INTO users (email, role, status, emailHash, signature) VALUES (?, ?, ?, ?, ?)');
+            const result = stmt.run(email, role, status, emailHash, signature);
 
             // Return the created user
             return this.getById(result.lastInsertRowid);
@@ -54,7 +61,7 @@ class User {
         }
     }
 
-    // Update user
+    // Update user with cryptography support
     static update(id, userData) {
         try {
             const {
@@ -74,9 +81,20 @@ class User {
                 }
             }
 
-            // Update user
-            const stmt = db.prepare('UPDATE users SET email = ?, role = ?, status = ? WHERE id = ?');
-            const result = stmt.run(email, role, status, id);
+            // If email is being changed, generate new hash and signature
+            let emailHash = existingUser.emailHash;
+            let signature = existingUser.signature;
+
+            if (email !== existingUser.email) {
+                console.log(`🔐 Email changed for user ${id}, generating new hash and signature...`);
+                emailHash = cryptoService.hashEmail(email);
+                signature = cryptoService.signHash(emailHash);
+                console.log(`✅ New hash and signature generated for ${email}`);
+            }
+
+            // Update user with crypto data if email changed
+            const stmt = db.prepare('UPDATE users SET email = ?, role = ?, status = ?, emailHash = ?, signature = ? WHERE id = ?');
+            const result = stmt.run(email, role, status, emailHash, signature, id);
 
             if (result.changes === 0) {
                 throw new Error('User not found');

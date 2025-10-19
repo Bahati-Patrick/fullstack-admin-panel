@@ -4,9 +4,14 @@ import dotenv from 'dotenv';
 
 import userRoutes from './routes/userRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
+import cryptoService from './services/cryptoService.js';
 
 // Load environment variables
 dotenv.config();
+
+// Initialize cryptography service
+console.log('🔐 Initializing cryptography service...');
+cryptoService.generateKeyPair();
 
 const app = express();
 const PORT = process.env.PORT || 5000;

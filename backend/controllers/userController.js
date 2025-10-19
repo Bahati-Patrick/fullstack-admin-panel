@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import cryptoService from '../services/cryptoService.js';
 
 class UserController {
     // Get all users
@@ -148,6 +149,25 @@ class UserController {
             console.error('Protobuf export error:', error);
             res.status(500).json({
                 error: 'Failed to export users as protobuf'
+            });
+        }
+    }
+
+    // Get public key for signature verification
+    static async getPublicKey(req, res) {
+        try {
+            const publicKey = cryptoService.getPublicKey();
+            const status = cryptoService.getStatus();
+
+            res.json({
+                publicKey,
+                status,
+                message: 'Public key for signature verification'
+            });
+        } catch (error) {
+            console.error('Public key retrieval error:', error);
+            res.status(500).json({
+                error: 'Failed to get public key'
             });
         }
     }
