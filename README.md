@@ -40,7 +40,7 @@ A professional admin panel implementing user management with Protocol Buffers, c
 - **Database:** SQLite with better-sqlite3
 - **Pagination:** Load More functionality (25 users per page)
 
-### 2. Protocol Buffers (CRITICAL)
+### 2. Protocol Buffers
 - **Schema:** `User.proto` with User and UserList messages
 - **Backend:** `/api/users/export` endpoint returns binary protobuf data
 - **Frontend:** Tab-based interface with protobuf decoding
